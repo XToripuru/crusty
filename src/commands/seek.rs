@@ -8,8 +8,6 @@ pub async fn seek(ctx: Context<'_>, time: String) -> Result<(), Error> {
         return Ok(());
     };
 
-    let seek_time = std::time::Duration::from_secs(secs);
-
     let songbird = get_songbird(ctx.serenity_context())
         .await
         .expect("Songbird not registered");
