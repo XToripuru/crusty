@@ -47,21 +47,30 @@ pub async fn seek(ctx: Context<'_>, time: String) -> Result<(), Error> {
 /// Returns None on invalid format.
 fn text_to_duration(time: impl AsRef<str>) -> Option<Duration> {
     let mut parts = time.as_ref().split(":");
-    // 3rd part is for forcing the right format (2:2:2 will currently return None)
-    match (parts.next(), parts.next(), parts.next()) {
+    // 4th part is for forcing the right format (2:2:2:2 will currently return None)
+    match (parts.next(), parts.next(), parts.next(), parts.next()) {
         // If there's no colon we interpret the one string as seconds
-        (Some(secs), None, None) => secs
+        (Some(secs), None, None, None) => secs
             .parse::<u64>()
             .ok()
             .map(|secs| Duration::from_secs(secs)),
         // If there is a colon we interpret two strings as minutes and seconds
-        (Some(mins), Some(secs), None) => {
+        (Some(mins), Some(secs), None, None) => {
             let mins = mins.parse::<u64>().ok()?;
             let secs = secs.parse::<u64>().ok()?;
-            if secs > 59 {
+            if secs > 59 || mins > 59 {
                 return None;
             }
             Some(Duration::from_secs(mins * 60 + secs))
+        }
+        (Some(hours), Some(mins), Some(secs), None) => {
+            let hours = hours.parse::<u64>().ok()?;
+            let mins = mins.parse::<u64>().ok()?;
+            let secs = secs.parse::<u64>().ok()?;
+            if secs > 59 || mins > 59 || hours > 23 {
+                return None;
+            }
+            Some(Duration::from_secs(hours * 3600 + mins * 60 + secs))
         }
         _ => None,
     }
