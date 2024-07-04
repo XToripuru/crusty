@@ -1,7 +1,13 @@
 use super::*;
+use std::time::Duration;
 
 #[poise::command(prefix_command, guild_only, aliases("forward"))]
-pub async fn seek(ctx: Context<'_>, secs: u64) -> Result<(), Error> {
+pub async fn seek(ctx: Context<'_>, time: String) -> Result<(), Error> {
+    let Some(seek_time) = text_to_duration(time) else {
+        ctx.say("Invalid time format").await?;
+        return Ok(());
+    };
+
     let seek_time = std::time::Duration::from_secs(secs);
 
     let songbird = get_songbird(ctx.serenity_context())
@@ -37,4 +43,28 @@ pub async fn seek(ctx: Context<'_>, secs: u64) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+/// Converts time in human format like 50 (50 seconds) or 9:30 (9 minutes and 30 seconds) to Duration.
+/// Returns None on invalid format.
+fn text_to_duration(time: impl AsRef<str>) -> Option<Duration> {
+    let mut parts = time.as_ref().split(":");
+    // 3rd part is for forcing the right format (2:2:2 will currently return None)
+    match (parts.next(), parts.next(), parts.next()) {
+        // If there's no colon we interpret the one string as seconds
+        (Some(secs), None, None) => secs
+            .parse::<u64>()
+            .ok()
+            .map(|secs| Duration::from_secs(secs)),
+        // If there is a colon we interpret two strings as minutes and seconds
+        (Some(mins), Some(secs), None) => {
+            let mins = mins.parse::<u64>().ok()?;
+            let secs = secs.parse::<u64>().ok()?;
+            if secs > 59 {
+                return None;
+            }
+            Some(Duration::from_secs(mins * 60 + secs))
+        }
+        _ => None,
+    }
 }
